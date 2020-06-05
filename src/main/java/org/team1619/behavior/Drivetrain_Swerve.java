@@ -8,7 +8,7 @@ import org.uacr.utilities.Config;
 import org.uacr.utilities.logging.LogManager;
 import org.uacr.utilities.logging.Logger;
 
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -31,6 +31,10 @@ public class Drivetrain_Swerve implements Behavior {
     private final double fRobotWidth;
     private final double fRadius;
 
+    private final String fNavx;
+    private Map<String, Double> fNavxValues = new HashMap<>();
+
+
     private String mStateName;
 
     public Drivetrain_Swerve(InputValues inputValues, OutputValues outputValues, Config config, RobotConfiguration robotConfiguration) {
@@ -45,6 +49,7 @@ public class Drivetrain_Swerve implements Behavior {
         fRobotWidth = robotConfiguration.getDouble("global_drivetrain", "robot_width");
         fRadius = Math.sqrt ((fRobotLength * fRobotLength) + (fRobotWidth * fRobotWidth));
 
+        fNavx = robotConfiguration.getString("global_drivetrain", "navx");
 
         mStateName = "Unknown";
     }
@@ -58,15 +63,27 @@ public class Drivetrain_Swerve implements Behavior {
 
     @Override
     public void update() {
-        double xAxis_left_js = fSharedInputValues.getNumeric(fXAxis_left_js);
-        double yAxis_left_js = -1 * fSharedInputValues.getNumeric(fYAxis_left_js);
-        double xAxis_right_js = fSharedInputValues.getNumeric(fXAxis_right_js);
+
+        // read joysticks
+        double strafe = fSharedInputValues.getNumeric(fXAxis_left_js);
+        double forward = -1 * fSharedInputValues.getNumeric(fYAxis_left_js);
+        double rotate = fSharedInputValues.getNumeric(fXAxis_right_js);
         double yAxis_right_js = fSharedInputValues.getNumeric(fYAxis_right_js);
 
-        double a = xAxis_left_js - xAxis_right_js * (fRobotLength / fRadius);
-        double b = xAxis_left_js + xAxis_right_js * (fRobotLength / fRadius);
-        double c = yAxis_left_js - xAxis_right_js * (fRobotWidth / fRadius);
-        double d = yAxis_left_js + xAxis_right_js * (fRobotWidth / fRadius);
+        // field centric steering - adjust joysticks based on Navx heading
+        if (fSharedInputValues.getBoolean("ipb_swerve_field_centric")) {
+            fNavxValues = fSharedInputValues.getVector(fNavx);
+            double heading = fNavxValues.getOrDefault("yaw", 0.0);
+            double temp = forward * Math.cos(heading) + strafe * Math.sin(heading);
+            strafe = -forward * Math.sin(heading) + strafe * Math.cos(heading);
+            forward = temp;
+        }
+
+
+        double a = strafe - rotate * (fRobotLength / fRadius);
+        double b = strafe + rotate * (fRobotLength / fRadius);
+        double c = forward - rotate * (fRobotWidth / fRadius);
+        double d = forward + rotate * (fRobotWidth / fRadius);
 
         double frontRightMotorSpeed = Math.sqrt ((b * b) + (d * d));
         double frontLeftMotorSpeed = Math.sqrt ((b * b) + (c * c));
@@ -78,18 +95,21 @@ public class Drivetrain_Swerve implements Behavior {
         double backLeftMotorAngle = Math.atan2 (a, c) * 180 / Math.PI;
         double backRightMotorAngle = Math.atan2 (a, d) * 180 / Math.PI;
 
-        double maxSpeed = frontRightMotorSpeed;
-        if(frontLeftMotorSpeed > maxSpeed) {
-            maxSpeed = frontLeftMotorSpeed;
-        }
-        if(backLeftMotorSpeed > maxSpeed) {
-            maxSpeed = backLeftMotorSpeed;
-        }
-        if(backRightMotorSpeed > maxSpeed) {
-            maxSpeed = backRightMotorSpeed;
-        }
-        if(maxSpeed >  1) {
-            frontRightMotorSpeed /= maxSpeed; 
+        Double[] speeds = { frontRightMotorSpeed, frontLeftMotorSpeed, backLeftMotorSpeed, backRightMotorSpeed };
+        double maxSpeed = Collections.max(Arrays.asList(speeds));
+
+//        double maxSpeed = frontRightMotorSpeed;
+//        if(frontLeftMotorSpeed > maxSpeed) {
+//            maxSpeed = frontLeftMotorSpeed;
+//        }
+//        if(backLeftMotorSpeed > maxSpeed) {
+//            maxSpeed = backLeftMotorSpeed;
+//        }
+//        if(backRightMotorSpeed > maxSpeed) {
+//            maxSpeed = backRightMotorSpeed;
+//        }
+        if(maxSpeed >  1.0) {
+            frontRightMotorSpeed /= maxSpeed;
             frontLeftMotorSpeed /= maxSpeed;
             backLeftMotorSpeed /= maxSpeed;
             backRightMotorSpeed /= maxSpeed;

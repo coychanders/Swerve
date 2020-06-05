@@ -48,6 +48,7 @@ global_drivetrain:
   y_right_js: ipn_driver_right_y
   robot_length: 24.0
   robot_width: 24.0
+  navx: ipv_navx
 
 log:
 

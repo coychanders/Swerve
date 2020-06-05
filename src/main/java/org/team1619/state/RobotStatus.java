@@ -27,10 +27,17 @@ public class RobotStatus extends AbstractRobotStatus {
             fSharedInputValues.setInputFlag("ipv_navx", "zero");
         }
 
+        fSharedInputValues.setBoolean("ipb_swerve_field_centric", true);
+
     }
 
     @Override
     public void update() {
+
+        if (fSharedInputValues.getBooleanRisingEdge("ipb_driver_a")) {
+            fSharedInputValues.setBoolean("ipb_swerve_field_centric", !fSharedInputValues.getBoolean("ipb_swerve_field_centric"));
+        }
+
 
         if (!fSharedInputValues.getBoolean("ipb_robot_has_been_zeroed") &&
                 fSharedInputValues.getBoolean("ipb_drivetrain_has_been_zeroed")) {
