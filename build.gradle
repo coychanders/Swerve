@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id "edu.wpi.first.GradleRIO" version "2020.1.2"
+}
+
+group 'org.team1619'
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+
+repositories {
+    mavenCentral()
+}
+
+allprojects {
+    repositories {
+        flatDir {
+            dirs '../jar-files'
+        }
+        maven {
+            url 'https://jitpack.io'
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.github.team1619:uacr-robot-core:2020.4.0.3'
+    implementation 'com.github.team1619:uacr-robot-dashboard:2020.0.2.4'
+    implementation 'com.github.team1619:frc-core-plugin:2020.3.1.5'
+//
+//    implementation (name: 'uacr-robot-core', ext: 'jar')
+//    implementation (name: 'uacr-robot-dashboard', ext: 'jar')
+//    implementation (name: 'frc-core-plugin', ext: 'jar')
+
+    implementation(group: 'com.google.guava', name: 'guava', version: '25.1-jre')
+    implementation 'org.yaml:snakeyaml:1.21'
+
+    implementation wpi.deps.wpilib()
+    nativeZip wpi.deps.wpilibJni(wpi.platforms.roborio)
+    nativeDesktopZip wpi.deps.wpilibJni(wpi.platforms.desktop)
+
+    implementation wpi.deps.vendor.java()
+    nativeZip wpi.deps.vendor.jni(wpi.platforms.roborio)
+    nativeDesktopZip wpi.deps.vendor.jni(wpi.platforms.desktop)
+}
