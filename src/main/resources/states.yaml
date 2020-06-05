@@ -11,6 +11,9 @@ single_state:
   st_drivetrain_percent:
     behavior: bh_drivetrain_percent
 
+  st_drivetrain_swerve:
+    behavior: bh_drivetrain_swerve
+
   # ------ Pure Pursuit ------
 
 done_for_time_state:

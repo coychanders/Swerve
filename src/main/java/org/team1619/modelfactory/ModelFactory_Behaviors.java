@@ -1,6 +1,6 @@
 package org.team1619.modelfactory;
 
-import org.team1619.behavior.Drivetrain_Percent;
+import org.team1619.behavior.Drivetrain_Swerve;
 import org.team1619.behavior.Drivetrain_Zero;
 import org.uacr.models.behavior.Behavior;
 import org.uacr.models.exceptions.ConfigurationException;
@@ -33,8 +33,8 @@ public class ModelFactory_Behaviors extends AbstractModelFactory {
 
         switch (name) {
             // Drivetrain
-            case "bh_drivetrain_percent":
-                return new Drivetrain_Percent(fSharedInputValues, fSharedOutputValues, config, fRobotConfiguration);
+            case "bh_drivetrain_swerve":
+                return new Drivetrain_Swerve(fSharedInputValues, fSharedOutputValues, config, fRobotConfiguration);
             case "bh_drivetrain_zero":
                 return new Drivetrain_Zero(fSharedInputValues, fSharedOutputValues, config, fRobotConfiguration);
 

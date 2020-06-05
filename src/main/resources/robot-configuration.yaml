@@ -9,8 +9,8 @@ general:
     parallels:
       priority_level_1: []
     ss_drivetrain:
-      priority_level_1: [st_drivetrain_zero, st_drivetrain_percent]
-      default: [st_drivetrain_percent]
+      priority_level_1: [st_drivetrain_zero, st_drivetrain_swerve]
+      default: [st_drivetrain_swerve]
 
   subsystems: [ss_drivetrain]
 
@@ -27,7 +27,7 @@ general:
 
   input_vectors: [ipv_odometry, ipv_navx]
 
-  output_numerics: [opn_drivetrain_left, opn_drivetrain_right]
+  output_numerics: [opn_drivetrain_front_right_speed, opn_drivetrain_front_left_speed, opn_drivetrain_back_left_speed, opn_drivetrain_back_right_speed, opn_drivetrain_front_right_angle, opn_drivetrain_front_left_angle, opn_drivetrain_back_left_angle, opn_drivetrain_back_right_angle]
 
   output_booleans: []
 
@@ -42,8 +42,12 @@ global_timing:
   frame_cycle_time_threshold_info_thread: 80
 
 global_drivetrain:
-  x: ipn_driver_right_x
-  y: ipn_driver_left_y
+  x_left_js: ipn_driver_left_x
+  y_left_js: ipn_driver_left_y
+  x_right_js: ipn_driver_right_x
+  y_right_js: ipn_driver_right_y
+  robot_length: 24.0
+  robot_width: 24.0
 
 log:
 
