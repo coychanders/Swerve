@@ -4,6 +4,7 @@ import org.uacr.models.behavior.Behavior;
 import org.uacr.shared.abstractions.InputValues;
 import org.uacr.shared.abstractions.OutputValues;
 import org.uacr.shared.abstractions.RobotConfiguration;
+import org.uacr.shared.concretions.SharedInputValues;
 import org.uacr.utilities.Config;
 import org.uacr.utilities.logging.LogManager;
 import org.uacr.utilities.logging.Logger;
@@ -31,6 +32,12 @@ public class Drivetrain_Swerve implements Behavior {
     private final double fRobotWidth;
     private final double fRadius;
 
+    private double mPreviousfrontRightMotorAngle;
+    private double mPreviousfrontLeftMotorAngle;
+    private double mPreviousBackLefttMotorAngle;
+    private double mPreviousBackRightMotorAngle;
+
+
     private final String fNavx;
     private Map<String, Double> fNavxValues = new HashMap<>();
 
@@ -49,6 +56,11 @@ public class Drivetrain_Swerve implements Behavior {
         fRobotWidth = robotConfiguration.getDouble("global_drivetrain", "robot_width");
         fRadius = Math.sqrt ((fRobotLength * fRobotLength) + (fRobotWidth * fRobotWidth));
 
+        mPreviousfrontRightMotorAngle = 0;
+        mPreviousfrontLeftMotorAngle = 0;
+        mPreviousBackLefttMotorAngle = 0;
+        mPreviousBackRightMotorAngle = 0;
+
         fNavx = robotConfiguration.getString("global_drivetrain", "navx");
 
         mStateName = "Unknown";
@@ -64,20 +76,47 @@ public class Drivetrain_Swerve implements Behavior {
     @Override
     public void update() {
 
-        // read joysticks
+        // Read joysticks
         double strafe = fSharedInputValues.getNumeric(fXAxis_left_js);
         double forward = -1 * fSharedInputValues.getNumeric(fYAxis_left_js);
         double rotate = fSharedInputValues.getNumeric(fXAxis_right_js);
-        double yAxis_right_js = fSharedInputValues.getNumeric(fYAxis_right_js);
+        double yAxis_right_js = -1 * fSharedInputValues.getNumeric(fYAxis_right_js);
 
-        // field centric steering - adjust joysticks based on Navx heading
+        // Get heading from the Navx
+        fNavxValues = fSharedInputValues.getVector(fNavx);
+        double heading = fNavxValues.getOrDefault("yaw", 0.0);
+        fSharedInputValues.setNumeric("opn_swerve_navx_heading", heading);
+
+        // Field centric steering - adjust joysticks based on Navx heading
+        if (fSharedInputValues.getBooleanRisingEdge("ipb_driver_a")) {
+            fSharedInputValues.setBoolean("ipb_swerve_field_centric", !fSharedInputValues.getBoolean("ipb_swerve_field_centric"));
+        }
         if (fSharedInputValues.getBoolean("ipb_swerve_field_centric")) {
-            fNavxValues = fSharedInputValues.getVector(fNavx);
-            double heading = fNavxValues.getOrDefault("yaw", 0.0);
             double temp = forward * Math.cos(heading) + strafe * Math.sin(heading);
             strafe = -forward * Math.sin(heading) + strafe * Math.cos(heading);
             forward = temp;
         }
+
+        // Use the right joystick to point the robot in a specific direction instead of spinning continuously
+        if (fSharedInputValues.getBoolean("ipb_driver_right_stick_button")){
+            // Calculate the direction the joystick is pointing
+            double joystickDirection = Math.atan2(rotate, yAxis_right_js) * 180 / Math.PI;
+            fSharedInputValues.setNumeric("opn_swerve_joystick_direction", joystickDirection);
+            // Adjust rotation based on how far it needs to spin to get to the correct orientation
+            double headingDiff = heading - joystickDirection;
+            fSharedInputValues.setNumeric("opn_swerve_heading_difference", joystickDirection);
+            rotate = headingDiff / 180;
+            //todo - need way to increase roation value when close to zero to cause movement
+        }
+        else{
+            fSharedInputValues.setNumeric("opn_swerve_joystick_direction", -9999);
+            fSharedInputValues.setNumeric("opn_swerve_heading_difference", -9999);
+        }
+
+        // Output values for debugging
+        fSharedInputValues.setNumeric("opn_swerve_forward", forward);
+        fSharedInputValues.setNumeric("opn_swerve_strafe", strafe);
+        fSharedInputValues.setNumeric("opn_swerve_rotate", rotate);
 
 
         double a = strafe - rotate * (fRobotLength / fRadius);
@@ -85,35 +124,36 @@ public class Drivetrain_Swerve implements Behavior {
         double c = forward - rotate * (fRobotWidth / fRadius);
         double d = forward + rotate * (fRobotWidth / fRadius);
 
+        // Calculate the wheel speed
         double frontRightMotorSpeed = Math.sqrt ((b * b) + (d * d));
         double frontLeftMotorSpeed = Math.sqrt ((b * b) + (c * c));
         double backLeftMotorSpeed = Math.sqrt ((a * a) + (c * c));
         double backRightMotorSpeed = Math.sqrt ((a * a) + (d * d));
 
+        // Calculate the wheel angle
         double frontRightMotorAngle = Math.atan2 (b, d) * 180 / Math.PI;
         double frontLeftMotorAngle = Math.atan2 (b, c) * 180 / Math.PI;
         double backLeftMotorAngle = Math.atan2 (a, c) * 180 / Math.PI;
         double backRightMotorAngle = Math.atan2 (a, d) * 180 / Math.PI;
 
+        // Normalize the wheel speed so they never exceed 1.0
         Double[] speeds = { frontRightMotorSpeed, frontLeftMotorSpeed, backLeftMotorSpeed, backRightMotorSpeed };
         double maxSpeed = Collections.max(Arrays.asList(speeds));
-
-//        double maxSpeed = frontRightMotorSpeed;
-//        if(frontLeftMotorSpeed > maxSpeed) {
-//            maxSpeed = frontLeftMotorSpeed;
-//        }
-//        if(backLeftMotorSpeed > maxSpeed) {
-//            maxSpeed = backLeftMotorSpeed;
-//        }
-//        if(backRightMotorSpeed > maxSpeed) {
-//            maxSpeed = backRightMotorSpeed;
-//        }
         if(maxSpeed >  1.0) {
             frontRightMotorSpeed /= maxSpeed;
             frontLeftMotorSpeed /= maxSpeed;
             backLeftMotorSpeed /= maxSpeed;
             backRightMotorSpeed /= maxSpeed;
         }
+
+        // If rotation is greater than 90 degrees, rotate the other direction and reverse wheel speed
+//        if(Math.abs(mPreviousfrontRightMotorAngle - frontRightMotorAngle) > 90){
+//            frontRightMotorAngle = 180 - frontRightMotorAngle;
+//            if(frontRightMotorAngle > 360){
+//                frontRightMotorAngle = frontRightMotorAngle - 360;
+//            }
+//            frontRightMotorSpeed = -1 * frontRightMotorSpeed;
+//        }
 
 
         // Set the motors
@@ -122,11 +162,17 @@ public class Drivetrain_Swerve implements Behavior {
         fSharedOutputValues.setNumeric("opn_drivetrain_back_left_speed", "percent", backLeftMotorSpeed);
         fSharedOutputValues.setNumeric("opn_drivetrain_back_right_speed", "percent", backRightMotorSpeed);
 
-        fSharedOutputValues.setNumeric("opn_drivetrain_front_right_angle", "percent", frontRightMotorAngle);
-        fSharedOutputValues.setNumeric("opn_drivetrain_front_left_angle", "percent", frontLeftMotorAngle);
-        fSharedOutputValues.setNumeric("opn_drivetrain_back_left_angle", "percent", backLeftMotorAngle);
-        fSharedOutputValues.setNumeric("opn_drivetrain_back_right_angle", "percent", backRightMotorAngle);
+        // set the angle
+        fSharedOutputValues.setNumeric("opn_drivetrain_front_right_angle", "position", frontRightMotorAngle);
+        fSharedOutputValues.setNumeric("opn_drivetrain_front_left_angle", "position", frontLeftMotorAngle);
+        fSharedOutputValues.setNumeric("opn_drivetrain_back_left_angle", "position", backLeftMotorAngle);
+        fSharedOutputValues.setNumeric("opn_drivetrain_back_right_angle", "position", backRightMotorAngle);
 
+        // Store angle
+        mPreviousfrontRightMotorAngle = frontRightMotorAngle;
+        mPreviousfrontLeftMotorAngle = frontLeftMotorAngle;
+        mPreviousBackLefttMotorAngle = backLeftMotorAngle;
+        mPreviousBackRightMotorAngle = backRightMotorAngle;
     }
 
 
