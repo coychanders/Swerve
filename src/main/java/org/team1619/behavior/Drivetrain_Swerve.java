@@ -113,27 +113,6 @@ public class Drivetrain_Swerve implements Behavior {
             fSharedInputValues.setNumeric("opn_swerve_heading_difference", -9999);
         }
 
-        // Spin around one of the four wheels instead of the center of the robot
-        if (fSharedInputValues.getBoolean("ipb_driver_right_bumper")) {
-            // Calculate the direction the joystick is pointing
-            double leftJoystickDirection = Math.atan2(strafe, forward) * 180 / Math.PI;
-            fSharedInputValues.setNumeric("opn_swerve_left_joystick_direction", leftJoystickDirection);
-            //todo - translate point of spin to one of the four wheels
-            if ((leftJoystickDirection > 90) && (leftJoystickDirection <= 180)) {
-                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 1);
-            } else if ((leftJoystickDirection >= -180) && (leftJoystickDirection < -90)) {
-                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 2);
-            } else if ((leftJoystickDirection >= -90) && (leftJoystickDirection < 0)) {
-                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 3);
-            } else if ((leftJoystickDirection >= 0) && (leftJoystickDirection <= 90)) {
-                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 4);
-            }
-        } else{
-            fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", -9999);
-            fSharedInputValues.setNumeric("opn_swerve_left_joystick_direction", -9999);
-        }
-
-
         // Output values for debugging
         fSharedInputValues.setNumeric("opn_swerve_forward", forward);
         fSharedInputValues.setNumeric("opn_swerve_strafe", strafe);
@@ -146,16 +125,16 @@ public class Drivetrain_Swerve implements Behavior {
         double d = forward + rotate * (fRobotWidth / fRadius);
 
         // Calculate the wheel speed
-        double frontRightMotorSpeed = Math.sqrt ((b * b) + (d * d));
-        double frontLeftMotorSpeed = Math.sqrt ((b * b) + (c * c));
-        double backLeftMotorSpeed = Math.sqrt ((a * a) + (c * c));
-        double backRightMotorSpeed = Math.sqrt ((a * a) + (d * d));
+        double frontRightMotorSpeed = Math.sqrt ((b * b) + (c * c));
+        double frontLeftMotorSpeed = Math.sqrt ((b * b) + (d * d));
+        double backLeftMotorSpeed = Math.sqrt ((a * a) + (d * d));
+        double backRightMotorSpeed = Math.sqrt ((a * a) + (c * c));
 
         // Calculate the wheel angle
-        double frontRightMotorAngle = Math.atan2 (b, d) * 180 / Math.PI;
-        double frontLeftMotorAngle = Math.atan2 (b, c) * 180 / Math.PI;
-        double backLeftMotorAngle = Math.atan2 (a, c) * 180 / Math.PI;
-        double backRightMotorAngle = Math.atan2 (a, d) * 180 / Math.PI;
+        double frontRightMotorAngle = Math.atan2 (b, c) * 180 / Math.PI;
+        double frontLeftMotorAngle = Math.atan2 (b, d) * 180 / Math.PI;
+        double backLeftMotorAngle = Math.atan2 (a, d) * 180 / Math.PI;
+        double backRightMotorAngle = Math.atan2 (a, c) * 180 / Math.PI;
 
         // Normalize the wheel speed so they never exceed 1.0
         Double[] speeds = { frontRightMotorSpeed, frontLeftMotorSpeed, backLeftMotorSpeed, backRightMotorSpeed };
