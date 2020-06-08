@@ -64,6 +64,7 @@ public class Drivetrain_Swerve implements Behavior {
         fNavx = robotConfiguration.getString("global_drivetrain", "navx");
 
         mStateName = "Unknown";
+
     }
 
     @Override
@@ -100,18 +101,38 @@ public class Drivetrain_Swerve implements Behavior {
         // Use the right joystick to point the robot in a specific direction instead of spinning continuously
         if (fSharedInputValues.getBoolean("ipb_driver_right_stick_button")){
             // Calculate the direction the joystick is pointing
-            double joystickDirection = Math.atan2(rotate, yAxis_right_js) * 180 / Math.PI;
-            fSharedInputValues.setNumeric("opn_swerve_joystick_direction", joystickDirection);
+            double rightJoystickDirection = Math.atan2(rotate, yAxis_right_js) * 180 / Math.PI;
+            fSharedInputValues.setNumeric("opn_swerve_right_joystick_direction", rightJoystickDirection);
             // Adjust rotation based on how far it needs to spin to get to the correct orientation
-            double headingDiff = heading - joystickDirection;
-            fSharedInputValues.setNumeric("opn_swerve_heading_difference", joystickDirection);
+            double headingDiff = heading - rightJoystickDirection;
+            fSharedInputValues.setNumeric("opn_swerve_heading_difference", rightJoystickDirection);
             rotate = headingDiff / 180;
             //todo - need way to increase roation value when close to zero to cause movement
-        }
-        else{
-            fSharedInputValues.setNumeric("opn_swerve_joystick_direction", -9999);
+        } else{
+            fSharedInputValues.setNumeric("opn_swerve_right_joystick_direction", -9999);
             fSharedInputValues.setNumeric("opn_swerve_heading_difference", -9999);
         }
+
+        // Spin around one of the four wheels instead of the center of the robot
+        if (fSharedInputValues.getBoolean("ipb_driver_right_bumper")) {
+            // Calculate the direction the joystick is pointing
+            double leftJoystickDirection = Math.atan2(strafe, forward) * 180 / Math.PI;
+            fSharedInputValues.setNumeric("opn_swerve_left_joystick_direction", leftJoystickDirection);
+            //todo - translate point of spin to one of the four wheels
+            if ((leftJoystickDirection > 90) && (leftJoystickDirection <= 180)) {
+                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 1);
+            } else if ((leftJoystickDirection >= -180) && (leftJoystickDirection < -90)) {
+                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 2);
+            } else if ((leftJoystickDirection >= -90) && (leftJoystickDirection < 0)) {
+                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 3);
+            } else if ((leftJoystickDirection >= 0) && (leftJoystickDirection <= 90)) {
+                fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", 4);
+            }
+        } else{
+            fSharedInputValues.setNumeric("opn_swerve_rotate_around_wheel", -9999);
+            fSharedInputValues.setNumeric("opn_swerve_left_joystick_direction", -9999);
+        }
+
 
         // Output values for debugging
         fSharedInputValues.setNumeric("opn_swerve_forward", forward);
