@@ -77,10 +77,16 @@ public class Drivetrain_Swerve implements Behavior {
     public void update() {
 
         // Read joysticks
-        double strafe = fSharedInputValues.getNumeric(fXAxis_left_js);
-        double forward = 1 * fSharedInputValues.getNumeric(fYAxis_left_js);
-        double rotate = fSharedInputValues.getNumeric(fXAxis_right_js);
-        double yAxis_right_js = -1 * fSharedInputValues.getNumeric(fYAxis_right_js);
+        double leftJs_yAxis = fSharedInputValues.getNumeric(fYAxis_left_js);
+        double leftJs_xAxis = fSharedInputValues.getNumeric(fXAxis_left_js);
+        double rightJs_xAxis = fSharedInputValues.getNumeric(fXAxis_right_js);
+        double rightJs_yAxis = fSharedInputValues.getNumeric(fYAxis_right_js);
+
+        // Define forward, strafe, point and rotate
+        double forward = leftJs_yAxis;
+        double strafe = leftJs_xAxis;
+        double point = -1 * rightJs_yAxis;
+        double rotate = rightJs_xAxis;
 
         // Get heading from the Navx
         fNavxValues = fSharedInputValues.getVector(fNavx);
@@ -100,7 +106,7 @@ public class Drivetrain_Swerve implements Behavior {
         // Use the right joystick to point the robot in a specific direction instead of spinning continuously
         if (fSharedInputValues.getBoolean("ipb_driver_right_stick_button")){
             // Calculate the direction the joystick is pointing
-            double rightJoystickDirection = Math.atan2(rotate, yAxis_right_js) * 180 / Math.PI;
+            double rightJoystickDirection = Math.atan2(rightJs_xAxis, rightJs_yAxis) * 180 / Math.PI;
             fSharedInputValues.setNumeric("opn_swerve_right_joystick_direction", rightJoystickDirection);
             // Adjust rotation based on how far it needs to spin to get to the correct orientation
             double headingDiff = heading - rightJoystickDirection;
@@ -157,10 +163,10 @@ public class Drivetrain_Swerve implements Behavior {
         // Rotate around one wheel
         if (fSharedInputValues.getBoolean("ipb_driver_dpad_up")){
             // Spin around left front wheel
-            frontRightMotorSpeed = fRobotWidth / fDiameter;
+            frontRightMotorSpeed = rightJs_xAxis * (fRobotWidth / fDiameter);
             frontLeftMotorSpeed = 0;
-            backLeftMotorSpeed = fRobotLength / fDiameter;
-            backRightMotorSpeed = 1;
+            backLeftMotorSpeed = rightJs_xAxis * (fRobotLength / fDiameter);
+            backRightMotorSpeed = rightJs_xAxis;
             frontRightMotorAngle = 0;
             frontLeftMotorAngle = 0;
             backLeftMotorAngle = 90;
@@ -168,9 +174,9 @@ public class Drivetrain_Swerve implements Behavior {
         } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_right")){
             // Spin around right front wheel
             frontRightMotorSpeed = 0;
-            frontLeftMotorSpeed = fRobotWidth / fDiameter;
-            backLeftMotorSpeed = 1;
-            backRightMotorSpeed = fRobotLength / fDiameter;
+            frontLeftMotorSpeed = rightJs_xAxis * (fRobotWidth / fDiameter);
+            backLeftMotorSpeed = rightJs_xAxis;
+            backRightMotorSpeed = rightJs_xAxis * (fRobotLength / fDiameter);
             frontRightMotorAngle = 0;
             frontLeftMotorAngle = 180;
             backLeftMotorAngle = 135;
@@ -178,9 +184,9 @@ public class Drivetrain_Swerve implements Behavior {
 
         } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_down")){
             // Spin around right back wheel
-            frontRightMotorSpeed = fRobotLength / fDiameter;
-            frontLeftMotorSpeed = 1;
-            backLeftMotorSpeed = fRobotWidth / fDiameter;
+            frontRightMotorSpeed = rightJs_xAxis * (fRobotLength / fDiameter);
+            frontLeftMotorSpeed = rightJs_xAxis;
+            backLeftMotorSpeed = rightJs_xAxis * (fRobotWidth / fDiameter);
             backRightMotorSpeed = 0;
             frontRightMotorAngle = -90;
             frontLeftMotorAngle = -135;
@@ -188,10 +194,10 @@ public class Drivetrain_Swerve implements Behavior {
             backRightMotorAngle = 0;
         } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_left")){
             // Spin around left back wheel
-            frontRightMotorSpeed = 1;
-            frontLeftMotorSpeed = fRobotLength / fDiameter;
+            frontRightMotorSpeed = rightJs_xAxis;
+            frontLeftMotorSpeed = rightJs_xAxis * (fRobotLength / fDiameter);
             backLeftMotorSpeed = 0;
-            backRightMotorSpeed = fRobotWidth / fDiameter;
+            backRightMotorSpeed = rightJs_xAxis * (fRobotWidth / fDiameter);
             frontRightMotorAngle = -45;
             frontLeftMotorAngle = -90;
             backLeftMotorAngle = 0;

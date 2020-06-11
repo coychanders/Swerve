@@ -16,7 +16,7 @@ controller_axis:
     port: 0
     axis: 5
     deadband: 0.15
-    inverted: false
+    inverted: true
     scale: 1.0
 
   ipn_driver_right_x:
