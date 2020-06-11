@@ -4,7 +4,6 @@ import org.uacr.models.behavior.Behavior;
 import org.uacr.shared.abstractions.InputValues;
 import org.uacr.shared.abstractions.OutputValues;
 import org.uacr.shared.abstractions.RobotConfiguration;
-import org.uacr.shared.concretions.SharedInputValues;
 import org.uacr.utilities.Config;
 import org.uacr.utilities.logging.LogManager;
 import org.uacr.utilities.logging.Logger;
@@ -30,7 +29,7 @@ public class Drivetrain_Swerve implements Behavior {
 
     private final double fRobotLength;
     private final double fRobotWidth;
-    private final double fRadius;
+    private final double fDiameter;
 
     private double mPreviousfrontRightMotorAngle;
     private double mPreviousfrontLeftMotorAngle;
@@ -54,7 +53,7 @@ public class Drivetrain_Swerve implements Behavior {
 
         fRobotLength = robotConfiguration.getDouble("global_drivetrain", "robot_length");
         fRobotWidth = robotConfiguration.getDouble("global_drivetrain", "robot_width");
-        fRadius = Math.sqrt ((fRobotLength * fRobotLength) + (fRobotWidth * fRobotWidth));
+        fDiameter = Math.sqrt ((fRobotLength * fRobotLength) + (fRobotWidth * fRobotWidth));
 
         mPreviousfrontRightMotorAngle = 0;
         mPreviousfrontLeftMotorAngle = 0;
@@ -79,7 +78,7 @@ public class Drivetrain_Swerve implements Behavior {
 
         // Read joysticks
         double strafe = fSharedInputValues.getNumeric(fXAxis_left_js);
-        double forward = -1 * fSharedInputValues.getNumeric(fYAxis_left_js);
+        double forward = 1 * fSharedInputValues.getNumeric(fYAxis_left_js);
         double rotate = fSharedInputValues.getNumeric(fXAxis_right_js);
         double yAxis_right_js = -1 * fSharedInputValues.getNumeric(fYAxis_right_js);
 
@@ -89,7 +88,7 @@ public class Drivetrain_Swerve implements Behavior {
         fSharedInputValues.setNumeric("opn_swerve_navx_heading", heading);
 
         // Field centric steering - adjust joysticks based on Navx heading
-        if (fSharedInputValues.getBooleanRisingEdge("ipb_driver_a")) {
+        if (fSharedInputValues.getBooleanRisingEdge("ipb_driver_start")) {
             fSharedInputValues.setBoolean("ipb_swerve_field_centric", !fSharedInputValues.getBoolean("ipb_swerve_field_centric"));
         }
         if (fSharedInputValues.getBoolean("ipb_swerve_field_centric")) {
@@ -119,10 +118,10 @@ public class Drivetrain_Swerve implements Behavior {
         fSharedInputValues.setNumeric("opn_swerve_rotate", rotate);
 
 
-        double a = strafe - rotate * (fRobotLength / fRadius);
-        double b = strafe + rotate * (fRobotLength / fRadius);
-        double c = forward - rotate * (fRobotWidth / fRadius);
-        double d = forward + rotate * (fRobotWidth / fRadius);
+        double a = strafe - rotate * (fRobotLength / fDiameter);
+        double b = strafe + rotate * (fRobotLength / fDiameter);
+        double c = forward - rotate * (fRobotWidth / fDiameter);
+        double d = forward + rotate * (fRobotWidth / fDiameter);
 
         // Calculate the wheel speed
         double frontRightMotorSpeed = Math.sqrt ((b * b) + (c * c));
@@ -155,6 +154,49 @@ public class Drivetrain_Swerve implements Behavior {
 //            frontRightMotorSpeed = -1 * frontRightMotorSpeed;
 //        }
 
+        // Rotate around one wheel
+        if (fSharedInputValues.getBoolean("ipb_driver_dpad_up")){
+            // Spin around left front wheel
+            frontRightMotorSpeed = fRobotWidth / fDiameter;
+            frontLeftMotorSpeed = 0;
+            backLeftMotorSpeed = fRobotLength / fDiameter;
+            backRightMotorSpeed = 1;
+            frontRightMotorAngle = 0;
+            frontLeftMotorAngle = 0;
+            backLeftMotorAngle = 90;
+            backRightMotorAngle = 45;
+        } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_right")){
+            // Spin around right front wheel
+            frontRightMotorSpeed = 0;
+            frontLeftMotorSpeed = fRobotWidth / fDiameter;
+            backLeftMotorSpeed = 1;
+            backRightMotorSpeed = fRobotLength / fDiameter;
+            frontRightMotorAngle = 0;
+            frontLeftMotorAngle = 180;
+            backLeftMotorAngle = 135;
+            backRightMotorAngle = 90;
+
+        } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_down")){
+            // Spin around right back wheel
+            frontRightMotorSpeed = fRobotLength / fDiameter;
+            frontLeftMotorSpeed = 1;
+            backLeftMotorSpeed = fRobotWidth / fDiameter;
+            backRightMotorSpeed = 0;
+            frontRightMotorAngle = -90;
+            frontLeftMotorAngle = -135;
+            backLeftMotorAngle = 180;
+            backRightMotorAngle = 0;
+        } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_left")){
+            // Spin around left back wheel
+            frontRightMotorSpeed = 1;
+            frontLeftMotorSpeed = fRobotLength / fDiameter;
+            backLeftMotorSpeed = 0;
+            backRightMotorSpeed = fRobotWidth / fDiameter;
+            frontRightMotorAngle = -45;
+            frontLeftMotorAngle = -90;
+            backLeftMotorAngle = 0;
+            backRightMotorAngle = 0;
+        }
 
         // Set the motors
         fSharedOutputValues.setNumeric("opn_drivetrain_front_right_speed", "percent", frontRightMotorSpeed);
