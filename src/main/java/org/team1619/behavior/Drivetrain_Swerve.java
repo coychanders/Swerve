@@ -4,6 +4,7 @@ import org.uacr.models.behavior.Behavior;
 import org.uacr.shared.abstractions.InputValues;
 import org.uacr.shared.abstractions.OutputValues;
 import org.uacr.shared.abstractions.RobotConfiguration;
+import org.uacr.shared.concretions.SharedInputValues;
 import org.uacr.utilities.Config;
 import org.uacr.utilities.logging.LogManager;
 import org.uacr.utilities.logging.Logger;
@@ -31,12 +32,6 @@ public class Drivetrain_Swerve implements Behavior {
     private final double fRobotWidth;
     private final double fDiameter;
 
-    private double mPreviousfrontRightMotorAngle;
-    private double mPreviousfrontLeftMotorAngle;
-    private double mPreviousBackLefttMotorAngle;
-    private double mPreviousBackRightMotorAngle;
-
-
     private final String fNavx;
     private Map<String, Double> fNavxValues = new HashMap<>();
 
@@ -54,11 +49,6 @@ public class Drivetrain_Swerve implements Behavior {
         fRobotLength = robotConfiguration.getDouble("global_drivetrain", "robot_length");
         fRobotWidth = robotConfiguration.getDouble("global_drivetrain", "robot_width");
         fDiameter = Math.sqrt ((fRobotLength * fRobotLength) + (fRobotWidth * fRobotWidth));
-
-        mPreviousfrontRightMotorAngle = 0;
-        mPreviousfrontLeftMotorAngle = 0;
-        mPreviousBackLefttMotorAngle = 0;
-        mPreviousBackRightMotorAngle = 0;
 
         fNavx = robotConfiguration.getString("global_drivetrain", "navx");
 
@@ -84,13 +74,13 @@ public class Drivetrain_Swerve implements Behavior {
 
         // Define forward, strafe, point and rotate
         double forward = leftJs_yAxis;
-        double strafe = leftJs_xAxis;
-        double point = -1 * rightJs_yAxis;
-        double rotate = rightJs_xAxis;
+        double strafe = -1 * leftJs_xAxis;
+        double point = rightJs_yAxis;
+        double rotate = -1 * rightJs_xAxis;
 
         // Get heading from the Navx
         fNavxValues = fSharedInputValues.getVector(fNavx);
-        double heading = fNavxValues.getOrDefault("yaw", 0.0);
+        double heading = fNavxValues.getOrDefault("angle", 0.0) - 90;
         fSharedInputValues.setNumeric("opn_swerve_navx_heading", heading);
 
         // Field centric steering - adjust joysticks based on Navx heading
@@ -98,8 +88,9 @@ public class Drivetrain_Swerve implements Behavior {
             fSharedInputValues.setBoolean("ipb_swerve_field_centric", !fSharedInputValues.getBoolean("ipb_swerve_field_centric"));
         }
         if (fSharedInputValues.getBoolean("ipb_swerve_field_centric")) {
-            double temp = forward * Math.cos(heading) + strafe * Math.sin(heading);
-            strafe = -forward * Math.sin(heading) + strafe * Math.cos(heading);
+            double radHeading = heading * Math.PI / 180;
+            double temp = forward * Math.cos(radHeading) + strafe * Math.sin(radHeading);
+            strafe = - forward * Math.sin(radHeading) + strafe * Math.cos(radHeading);
             forward = temp;
         }
 
@@ -110,7 +101,7 @@ public class Drivetrain_Swerve implements Behavior {
             fSharedInputValues.setNumeric("opn_swerve_right_joystick_direction", rightJoystickDirection);
             // Adjust rotation based on how far it needs to spin to get to the correct orientation
             double headingDiff = heading - rightJoystickDirection;
-            fSharedInputValues.setNumeric("opn_swerve_heading_difference", rightJoystickDirection);
+            fSharedInputValues.setNumeric("opn_swerve_heading_difference", headingDiff);
             rotate = headingDiff / 180;
             //todo - need way to increase roation value when close to zero to cause movement
         } else{
@@ -130,16 +121,16 @@ public class Drivetrain_Swerve implements Behavior {
         double d = forward + rotate * (fRobotWidth / fDiameter);
 
         // Calculate the wheel speed
-        double frontRightMotorSpeed = Math.sqrt ((b * b) + (c * c));
-        double frontLeftMotorSpeed = Math.sqrt ((b * b) + (d * d));
-        double backLeftMotorSpeed = Math.sqrt ((a * a) + (d * d));
-        double backRightMotorSpeed = Math.sqrt ((a * a) + (c * c));
+        double frontRightMotorSpeed = Math.sqrt ((b * b) + (d * d));
+        double frontLeftMotorSpeed = Math.sqrt ((b * b) + (c * c));
+        double backLeftMotorSpeed = Math.sqrt ((a * a) + (c * c));
+        double backRightMotorSpeed = Math.sqrt ((a * a) + (d * d));
 
         // Calculate the wheel angle
-        double frontRightMotorAngle = Math.atan2 (b, c) * 180 / Math.PI;
-        double frontLeftMotorAngle = Math.atan2 (b, d) * 180 / Math.PI;
-        double backLeftMotorAngle = Math.atan2 (a, d) * 180 / Math.PI;
-        double backRightMotorAngle = Math.atan2 (a, c) * 180 / Math.PI;
+        double frontRightMotorAngle = Math.atan2 (b, d) * 180 / Math.PI;
+        double frontLeftMotorAngle = Math.atan2 (b, c) * 180 / Math.PI;
+        double backLeftMotorAngle = Math.atan2 (a, c) * 180 / Math.PI;
+        double backRightMotorAngle = Math.atan2 (a, d) * 180 / Math.PI;
 
         // Normalize the wheel speed so they never exceed 1.0
         Double[] speeds = { frontRightMotorSpeed, frontLeftMotorSpeed, backLeftMotorSpeed, backRightMotorSpeed };
@@ -151,14 +142,33 @@ public class Drivetrain_Swerve implements Behavior {
             backRightMotorSpeed /= maxSpeed;
         }
 
-        // If rotation is greater than 90 degrees, rotate the other direction and reverse wheel speed
-//        if(Math.abs(mPreviousfrontRightMotorAngle - frontRightMotorAngle) > 90){
-//            frontRightMotorAngle = 180 - frontRightMotorAngle;
-//            if(frontRightMotorAngle > 360){
-//                frontRightMotorAngle = frontRightMotorAngle - 360;
-//            }
-//            frontRightMotorSpeed = -1 * frontRightMotorSpeed;
-//        }
+        // Slow down wheel speed when wheels are changing angle and flip the wheel direction if the angle difference is greater than 90
+
+        // Get the current wheel angle
+        double ipnfra = fSharedInputValues.getNumeric("ipn_drivetrain_front_right_angle");
+        double ipnfla = fSharedInputValues.getNumeric("ipn_drivetrain_front_left_angle");
+        double ipnbla = fSharedInputValues.getNumeric("ipn_drivetrain_back_left_angle");
+        double ipnbra = fSharedInputValues.getNumeric("ipn_drivetrain_back_right_angle");
+
+        // Scale the wheel speed  based on the cube of the difference in angle
+        // Cos of zero difference is a scale factor of 1
+        // A difference in angle greater than 90 degrees causes a negative value due to cos
+        double scaleFrontRightSpeed = Math.pow((Math.cos((frontRightMotorAngle - ipnfra)*Math.PI/180)),3);
+        double scaleFrontleftSpeed = Math.pow((Math.cos((frontLeftMotorAngle - ipnfla)*Math.PI/180)),3);
+        double scaleBackLeftSpeed = Math.pow((Math.cos((backLeftMotorAngle - ipnbla)*Math.PI/180)),3);
+        double scaleBackRightSpeed = Math.pow((Math.cos((backRightMotorAngle - ipnbra)*Math.PI/180)),3);
+
+        // If the scale is negative, flip the wheel angle 180 degrees as the wheel speed will be negative
+        if(scaleFrontRightSpeed < 0){ frontRightMotorAngle += 180; }
+        if(scaleFrontleftSpeed < 0){ frontLeftMotorAngle += 180; }
+        if(scaleBackLeftSpeed < 0){ backLeftMotorAngle += 180; }
+        if(scaleBackRightSpeed < 0){ backRightMotorAngle += 180; }
+
+        // Scale the wheel speed
+        frontRightMotorSpeed = frontRightMotorSpeed * scaleFrontRightSpeed;
+        frontLeftMotorSpeed = frontLeftMotorSpeed * scaleFrontleftSpeed;
+        backLeftMotorSpeed = backLeftMotorSpeed * scaleBackLeftSpeed;
+        backRightMotorSpeed = backRightMotorSpeed * scaleBackRightSpeed;
 
         // Rotate around one wheel
         if (fSharedInputValues.getBoolean("ipb_driver_dpad_up")){
@@ -167,10 +177,10 @@ public class Drivetrain_Swerve implements Behavior {
             frontLeftMotorSpeed = 0;
             backLeftMotorSpeed = rightJs_xAxis * (fRobotLength / fDiameter);
             backRightMotorSpeed = rightJs_xAxis;
-            frontRightMotorAngle = 0;
+            frontRightMotorAngle = 180;
             frontLeftMotorAngle = 0;
             backLeftMotorAngle = 90;
-            backRightMotorAngle = 45;
+            backRightMotorAngle = 135;
         } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_right")){
             // Spin around right front wheel
             frontRightMotorSpeed = 0;
@@ -178,8 +188,8 @@ public class Drivetrain_Swerve implements Behavior {
             backLeftMotorSpeed = rightJs_xAxis;
             backRightMotorSpeed = rightJs_xAxis * (fRobotLength / fDiameter);
             frontRightMotorAngle = 0;
-            frontLeftMotorAngle = 180;
-            backLeftMotorAngle = 135;
+            frontLeftMotorAngle = 0;
+            backLeftMotorAngle = 45;
             backRightMotorAngle = 90;
 
         } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_down")){
@@ -189,8 +199,8 @@ public class Drivetrain_Swerve implements Behavior {
             backLeftMotorSpeed = rightJs_xAxis * (fRobotWidth / fDiameter);
             backRightMotorSpeed = 0;
             frontRightMotorAngle = -90;
-            frontLeftMotorAngle = -135;
-            backLeftMotorAngle = 180;
+            frontLeftMotorAngle = -45;
+            backLeftMotorAngle = 0;
             backRightMotorAngle = 0;
         } else if (fSharedInputValues.getBoolean("ipb_driver_dpad_left")){
             // Spin around left back wheel
@@ -198,10 +208,10 @@ public class Drivetrain_Swerve implements Behavior {
             frontLeftMotorSpeed = rightJs_xAxis * (fRobotLength / fDiameter);
             backLeftMotorSpeed = 0;
             backRightMotorSpeed = rightJs_xAxis * (fRobotWidth / fDiameter);
-            frontRightMotorAngle = -45;
+            frontRightMotorAngle = -135;
             frontLeftMotorAngle = -90;
             backLeftMotorAngle = 0;
-            backRightMotorAngle = 0;
+            backRightMotorAngle = 180;
         }
 
         // Set the motors
@@ -215,12 +225,6 @@ public class Drivetrain_Swerve implements Behavior {
         fSharedOutputValues.setNumeric("opn_drivetrain_front_left_angle", "position", frontLeftMotorAngle);
         fSharedOutputValues.setNumeric("opn_drivetrain_back_left_angle", "position", backLeftMotorAngle);
         fSharedOutputValues.setNumeric("opn_drivetrain_back_right_angle", "position", backRightMotorAngle);
-
-        // Store angle
-        mPreviousfrontRightMotorAngle = frontRightMotorAngle;
-        mPreviousfrontLeftMotorAngle = frontLeftMotorAngle;
-        mPreviousBackLefttMotorAngle = backLeftMotorAngle;
-        mPreviousBackRightMotorAngle = backRightMotorAngle;
     }
 
 

@@ -22,7 +22,8 @@ general:
 
   input_numerics: [
     ipn_driver_left_y, ipn_driver_left_x, ipn_driver_right_y, ipn_driver_right_x,
-    ipn_operator_left_y, ipn_operator_left_x, ipn_operator_right_y, ipn_operator_right_x
+    ipn_operator_left_y, ipn_operator_left_x, ipn_operator_right_y, ipn_operator_right_x,
+    ipn_drivetrain_front_right_angle, ipn_drivetrain_front_left_angle, ipn_drivetrain_back_left_angle, ipn_drivetrain_back_right_angle
   ]
 
   input_vectors: [ipv_odometry, ipv_navx]

@@ -24,9 +24,9 @@ allprojects {
 }
 
 dependencies {
-    implementation 'com.github.team1619:uacr-robot-core:2020.4.0.3'
-    implementation 'com.github.team1619:uacr-robot-dashboard:2020.0.2.4'
-    implementation 'com.github.team1619:frc-core-plugin:2020.3.1.5'
+    implementation 'com.github.team1619:uacr-robot-core:2020.6.0.0'
+    implementation 'com.github.team1619:uacr-robot-dashboard:73d1fb4a3f892a53fa09db89082acc495f5398e9'
+    implementation 'com.github.team1619:frc-core-plugin:2020.3.1.6'
 //
 //    implementation (name: 'uacr-robot-core', ext: 'jar')
 //    implementation (name: 'uacr-robot-dashboard', ext: 'jar')

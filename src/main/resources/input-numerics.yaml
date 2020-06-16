@@ -4,6 +4,7 @@ controller_axis:
     axis: 1
     deadband: 0.15
     inverted: true
+    scale: 1.0
 
   ipn_driver_left_x:
     port: 0
@@ -52,4 +53,15 @@ controller_axis:
     inverted: true
 
 analog_sensor:
+  ipn_drivetrain_front_right_angle:
+    port: 0
+
+  ipn_drivetrain_front_left_angle:
+    port: 1
+
+  ipn_drivetrain_back_left_angle:
+    port: 2
+
+  ipn_drivetrain_back_right_angle:
+    port: 3
 
